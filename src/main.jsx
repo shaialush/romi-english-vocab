@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { words } from './words';
+import { unseenTitle, unseenParagraphs, unseenQuestions } from './unseen';
 import './style.css';
 
 const KEY='romi-word-bloom-v1';
@@ -20,13 +21,14 @@ function App(){
   {view==='learn'&&<Learn stats={stats} setStats={setStats} done={()=>setView('home')}/>} 
   {view==='test'&&<Test stats={stats} setStats={setStats} done={()=>setView('home')}/>} 
   {view==='list'&&<WordList stats={stats} search={search} setSearch={setSearch} back={()=>setView('home')}/>} 
+  {view==='unseen'&&<Unseen back={()=>setView('home')}/>} 
  </main>
 }
 
 function Home({known,shaky,setView}){const pct=Math.round(known/words.length*100);return <>
  <section className="hero"><div className="eyebrow">היי רומי ✦ הגיע הזמן לפרוח</div><h1>מילים קטנות.<br/><em>ביטחון גדול.</em></h1><p>כל {words.length} המילים מהמבחן שלך, בתרגול קצר וחכם.</p><button className="primary" onClick={()=>setView('learn')}>מתחילים ללמוד <span>←</span></button></section>
  <section className="dashboard"><div className="progress-card"><div><small>ההתקדמות שלי</small><strong>{pct}%</strong></div><div className="bar"><i style={{width:pct+'%'}}/></div><p><b>{known}</b> מילים בשליטה · <b>{shaky}</b> בתרגול</p></div>
- <div className="choices"><button onClick={()=>setView('learn')}><span className="blob coral">✦</span><div><b>תרגול חכם</b><small>כרטיסיות שחוזרות בדיוק בזמן</small></div><i>←</i></button><button onClick={()=>setView('test')}><span className="blob blue">✓</span><div><b>מבחן עצמי</b><small>20 שאלות, ציון ומשוב</small></div><i>←</i></button><button onClick={()=>setView('list')}><span className="blob yellow">A</span><div><b>כל המילים</b><small>חיפוש, תרגום והגייה</small></div><i>←</i></button></div></section>
+ <div className="choices"><button onClick={()=>setView('learn')}><span className="blob coral">✦</span><div><b>תרגול חכם</b><small>כרטיסיות שחוזרות בדיוק בזמן</small></div><i>←</i></button><button onClick={()=>setView('test')}><span className="blob blue">✓</span><div><b>מבחן עצמי</b><small>20 שאלות, ציון ומשוב</small></div><i>←</i></button><button onClick={()=>setView('unseen')}><span className="blob purple">U</span><div><b>תרגול Unseen</b><small>סיפור, הבנת הנקרא ושאלות</small></div><i>←</i></button><button onClick={()=>setView('list')}><span className="blob yellow">A</span><div><b>כל המילים</b><small>חיפוש, תרגום והגייה</small></div><i>←</i></button></div></section>
  </>}
 
 function Learn({stats,setStats,done}){const deck=useMemo(()=>shuffle(words.flatMap(w=>Array(Math.max(1,3-(stats[w.id]?.score||0))).fill(w))),[]);const [n,setN]=useState(0),[flip,setFlip]=useState(false);const w=deck[n%deck.length];const grade=score=>{setStats(s=>({...s,[w.id]:{score,seen:(s[w.id]?.seen||0)+1}}));setFlip(false);if(n+1>=Math.min(deck.length,25))done();else setN(n+1)};return <section className="session"><SessionTop title="תרגול חכם" n={n+1} total={Math.min(deck.length,25)} back={done}/><p className="hint">חשבי על התרגום ואז הפכי את הכרטיס</p><button className={'flash '+(flip?'flipped':'')} onClick={()=>setFlip(!flip)}><div><small>{flip?'התרגום':'ENGLISH'}</small><h2 dir={flip?'rtl':'ltr'}>{flip?w.he:w.en}</h2>{!flip&&<span className="sound" onClick={e=>{e.stopPropagation();speak(w.en)}}>🔊 לשמוע</span>}<p>{flip?'לחצי שוב כדי לחזור':'לחצי כדי לגלות'}</p></div></button>{flip&&<div className="grades"><button onClick={()=>grade(0)}>לא ידעתי<br/><small>עוד מעט שוב</small></button><button onClick={()=>grade(1)}>כמעט<br/><small>צריך עוד חזרה</small></button><button onClick={()=>grade(3)}>ידעתי!<br/><small>מעולה</small></button></div>}</section>}
@@ -38,5 +40,16 @@ function Test({stats,setStats,done}){const qs=useMemo(()=>shuffle(words).slice(0
 function Result({score,done,retry}){return <section className="result"><div className="result-ring"><strong>{score*5}</strong><span>מתוך 100</span></div><h1>{score>=18?'וואו, את מוכנה!':score>=14?'עבודה מצוינת!':'התחלה טובה!'}</h1><p>{score} תשובות נכונות מתוך 20. המילים שהתפספסו חזרו אוטומטית לתרגול.</p><button className="primary" onClick={retry}>מבחן נוסף</button><button className="text-btn" onClick={done}>חזרה לדף הבית</button></section>}
 
 function WordList({stats,search,setSearch,back}){const list=words.filter(w=>(w.en+' '+w.he).toLowerCase().includes(search.toLowerCase()));return <section className="word-page"><div className="list-head"><button onClick={back}>→</button><div><small>LOOKING BACK</small><h1>כל המילים</h1></div></div><div className="search">⌕<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="חיפוש בעברית או באנגלית..."/></div><p className="count">{list.length} מילים</p><div className="word-grid">{list.map(w=><article key={w.id}><button onClick={()=>speak(w.en)}>🔊</button><div><b dir="ltr">{w.en}</b><span>{w.he}</span></div><i className={(stats[w.id]?.score||0)>=2?'known':(stats[w.id]?.score||0)?'learning':''}>{(stats[w.id]?.score||0)>=2?'✓':'•'}</i></article>)}</div></section>}
+
+const targetWords=[...words].sort((a,b)=>b.en.length-a.en.length);
+function MarkedText({text}){const escape=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const pattern=new RegExp(`(${targetWords.map(w=>escape(w.en)).join('|')})`,'gi');return text.split(pattern).map((part,i)=>{const w=targetWords.find(x=>x.en.toLowerCase()===part.toLowerCase());return w?<mark key={i} title={w.he}>{part}</mark>:part})}
+
+function Unseen({back}){const [answers,setAnswers]=useState({}),[checked,setChecked]=useState(false),[showWords,setShowWords]=useState(true);const multiple=unseenQuestions.filter(q=>q.type==='mc');const score=multiple.reduce((n,q,i)=>n+(Number(answers[i])===q.answer?1:0),0);return <section className="unseen-page">
+ <div className="list-head"><button onClick={back}>→</button><div><small>READING PRACTICE</small><h1>תרגול Unseen</h1></div></div>
+ <div className="unseen-intro"><div><span>כ־10 דקות קריאה</span><h2>{unseenTitle}</h2><p>קראי את הסיפור ועני באנגלית. נסי להבין מההקשר לפני שאת בודקת מילה.</p></div><button onClick={()=>setShowWords(v=>!v)}>{showWords?'הסתרת':'הצגת'} מילות המבחן</button></div>
+ <article className={'passage '+(showWords?'show-marks':'')} dir="ltr" lang="en">{unseenParagraphs.map((p,i)=><p key={i}><span>{i+1}</span><MarkedText text={p}/></p>)}</article>
+ <section className="unseen-questions"><div className="questions-title"><small>COMPREHENSION</small><h2>Questions</h2><p>Answer the questions according to the text.</p></div>{unseenQuestions.map((q,i)=><div className="unseen-question" key={i} dir="ltr"><b>{i+1}. {q.q}</b>{q.type==='mc'?<div className="unseen-options">{q.options.map((o,j)=><label className={checked?(j===q.answer?'correct':Number(answers[i])===j?'incorrect':''):''} key={o}><input type="radio" name={'q'+i} checked={Number(answers[i])===j} onChange={()=>!checked&&setAnswers(a=>({...a,[i]:j}))}/><span>{o}</span></label>)}</div>:<><textarea value={answers[i]||''} onChange={e=>setAnswers(a=>({...a,[i]:e.target.value}))} disabled={checked} placeholder="Write your answer in English..."/>{checked&&<div className="model-answer"><b>Check your answer:</b> {q.model}</div>}</>}</div>)}
+ {!checked?<button className="primary check-unseen" onClick={()=>setChecked(true)}>בדיקת תשובות</button>:<div className="unseen-result"><strong>{score}/{multiple.length}</strong><div><b>{score>=7?'Excellent reading! 🌟':score>=5?'Nice work — read the corrections carefully':'Good start — go back to the marked paragraphs'}</b><p>זה הציון על השאלות הסגורות. בשאלות הפתוחות השווי לתשובת הבדיקה.</p></div><button onClick={()=>{setAnswers({});setChecked(false);scrollTo({top:0,behavior:'smooth'})}}>לנסות מחדש</button></div>}
+ </section></section>}
 
 createRoot(document.getElementById('root')).render(<App/>);
