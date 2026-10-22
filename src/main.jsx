@@ -9,8 +9,10 @@ import './manage.css';
 const KEY='romi-word-bloom-v1';
 const LIST_KEY='romi-word-bloom-list-v1';
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}};
-const defaultSelected=words.filter(w=>romiReviewEnglish.includes(w.en)).map(w=>w.id);
-const loadList=()=>{try{const saved=JSON.parse(localStorage.getItem(LIST_KEY));return saved&&Array.isArray(saved.selected)&&Array.isArray(saved.custom)?saved:{selected:defaultSelected,custom:[]}}catch{return {selected:defaultSelected,custom:[]}}};
+const oldMarkedSelected=words.filter(w=>romiReviewEnglish.includes(w.en)).map(w=>w.id);
+const defaultSelected=words.filter(w=>!romiReviewEnglish.includes(w.en)).map(w=>w.id);
+const sameIds=(a,b)=>a.length===b.length&&a.every(id=>b.includes(id));
+const loadList=()=>{try{const saved=JSON.parse(localStorage.getItem(LIST_KEY));if(!saved||!Array.isArray(saved.selected)||!Array.isArray(saved.custom))return{selected:defaultSelected,custom:[],selectionVersion:2};if(!saved.selectionVersion&&sameIds(saved.selected,oldMarkedSelected))return{...saved,selected:[...defaultSelected,...saved.custom.map(w=>w.id)],selectionVersion:2};return{...saved,selectionVersion:2}}catch{return{selected:defaultSelected,custom:[],selectionVersion:2}}};
 const shuffle=a=>[...a].sort(()=>Math.random()-.5);
 const speak=t=>{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=.82;speechSynthesis.speak(u)};
 
@@ -82,7 +84,7 @@ function ManageWords({allWords,wordList,setWordList,back}){
  const add=e=>{e.preventDefault();const english=en.trim(),hebrew=he.trim();if(!english||!hebrew)return;const existing=allWords.find(w=>w.en.toLowerCase()===english.toLowerCase());if(existing){setWordList(s=>({...s,selected:s.selected.includes(existing.id)?s.selected:[...s.selected,existing.id]}))}else{const w={id:'custom-'+Date.now(),en:english,he:hebrew};setWordList(s=>({...s,custom:[...s.custom,w],selected:[...s.selected,w.id]}))}setEn('');setHe('')};
  const removeCustom=id=>setWordList(s=>({...s,custom:s.custom.filter(w=>w.id!==id),selected:s.selected.filter(x=>x!==id)}));
  return <section className="word-page manage-page"><div className="list-head"><button onClick={back}>→</button><div><small>FOCUS WORDS</small><h1>בחירת מילות מיקוד</h1></div></div>
-  <div className="manage-summary"><div><strong>{wordList.selected.length}</strong><span>מילים מסומנות לתרגול וליצירת קטעים</span></div><button onClick={restore}>בחירת 54 המילים של רומי</button></div>
+  <div className="manage-summary"><div><strong>{wordList.selected.length}</strong><span>מילים מסומנות לתרגול וליצירת קטעים</span></div><button onClick={restore}>שחזור המילים שלא סומנו במרקר</button></div>
   <form className="add-word" onSubmit={add}><div><b>הוספת מילה חדשה</b><small>המילה תיבחר אוטומטית לתרגול</small></div><input dir="ltr" value={en} onChange={e=>setEn(e.target.value)} placeholder="English word"/><input value={he} onChange={e=>setHe(e.target.value)} placeholder="תרגום בעברית"/><button disabled={!en.trim()||!he.trim()}>הוספה +</button></form>
   <div className="manage-tools"><div className="search">⌕<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="חיפוש ברשימה..."/></div><button onClick={()=>setWordList(s=>({...s,selected:allWords.map(w=>w.id)}))}>בחירת הכול</button><button onClick={()=>setWordList(s=>({...s,selected:[]}))}>ניקוי הכול</button></div>
   <div className="select-grid">{visible.map(w=><article className={wordList.selected.includes(w.id)?'selected':''} key={w.id}><label><input type="checkbox" checked={wordList.selected.includes(w.id)} onChange={()=>toggle(w.id)}/><span className="checkmark">✓</span><span><b dir="ltr">{w.en}</b><small>{w.he}</small></span></label>{String(w.id).startsWith('custom-')&&<button className="delete-word" onClick={()=>removeCustom(w.id)} title="מחיקה">×</button>}</article>)}</div>
